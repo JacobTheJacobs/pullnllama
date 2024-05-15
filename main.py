@@ -1,42 +1,33 @@
+import requests
+import json
+import asyncio
 from git_handler import GitHandler
-from review import ReviewHandler
-from ollama_send import OllamaSender
+from ollama import OllamaSender
 
-def main():
+
+
+handler = GitHandler("https://github.com/X/Y/pull/Z", "branch_name", "path\\to\\repo\\download\\folder")
+
+handler.clone_or_pull_repo()
+handler.fetch_pr()
+diffs = handler.get_diff()
+c = 0
+
+for i in diffs:
+    c += 1
     
-    github_url = ""
+print("Number of files: ", c)
+response = []
+async def send_diffs():
+    i = 0
+    for d in diffs:
+        i += 1
+        print(i * 100 / c, "%")
+        print("send_to_ollama started")
+        response.append(await OllamaSender().send_to_ollama(d))
+        print('send_to_ollama finished')
 
-    parts = github_url.split("/")
-    repo_owner = parts[-4]
-    repo_name = parts[-3]
-    pr_id = parts[-1]
-
-    git = GitHandler(github_url)
-
-    git.clone_or_pull_repo()
-
-    git.fetch_pr()
-
-    diffs = git.get_diff()
-
-    print(diffs)
-
-    commit_id = git.get_latest_commit_id()
-    ollama = OllamaSender()
-
-    res = ollama.send_to_ollama(diffs)
-    
-    print(res)
-
-    line_numbers = ReviewHandler.get_line_numbers_from_response(res)
-
-    if not line_numbers:
-        line_numbers = [ReviewHandler.get_line_number_from_diff(diffs)]
-
-    comments = [{"path": "main.py", "position": 4, "body": res}]
-
-    ReviewHandler.create_pr_review(repo_owner, repo_name, pr_id,
-                                   "llama3", commit_id, "COMMENT", comments)
-
-if __name__ == "__main__":
-    main()
+asyncio.run(send_diffs())
+for i in response:
+    print(i)
+    print("--------------------------------------------------------------------")
