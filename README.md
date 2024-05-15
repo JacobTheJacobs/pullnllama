@@ -1,22 +1,16 @@
 # 🚀 Pulln-llama 🦙
 
-Welcome to Pulln-llama! 😎
-This project is all about making your life easier when dealing with PR's. We fetch, split, and analyze diffs from your pull requests, and then send them to our friendly neighborhood Ollama for review. 🕵️‍♀️
+Welcome to Pulln-llama! 
+This project is all about making your life easier when dealing with PR's. We fetch, split, and analyze diffs from your pull requests, and then send them to our friendly neighborhood Ollama for review. 
 
 
 ## 🎯 What does it do?
 
-1. 🐑 Clones or pulls your repo.
-2. 📬 Fetches your pull request.
-3. 📜 Splits the diff into manageable chunks.
-4. 🦙 Sends each chunk to Ollama for review.
-5. 🔄 Repeats the process until all diffs are reviewed.
-
-
-## 🎉 Why is it cool?
-
-Because it saves you time and effort! Let Ollama do the heavy lifting while do other stuff. 🍹
-
+1. Clones or pulls your repo.
+2. Fetches your pull request.
+3. Splits the diff into manageable chunks.
+4. Sends each chunk to Ollama for review.
+5. Repeats the process until all diffs are reviewed.
 
 ## 🛠️ Setup
 
