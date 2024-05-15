@@ -1,6 +1,4 @@
 import aiohttp
-import asyncio
-import json
 
 class OllamaSender:
     def __init__(self, model="llama3"):
@@ -17,18 +15,24 @@ class OllamaSender:
             "stream": False,     
             "temperature": 0.5   
         }
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post("http://localhost:8081/api/generate", headers=headers, json=data) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        actual_response = (data["response"])
-                        print(actual_response)
-                        return actual_response
-                    else:
-                        text = await response.text()
-                        print("Error:", text)
-                        raise Exception('Failed to get a valid response from the model.')
-        except Exception as e:
-            print(e)
-            return None
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post("http://localhost:8081/api/generate", headers=headers, json=data) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            actual_response = (data["response"])
+                            print(actual_response)
+                            return actual_response
+                        else:
+                            text = await response.text()
+                            print("Error:", text)
+                            raise Exception('Failed to get a valid response from the model.')
+            except Exception as e:
+                print(e)
+                if attempt < max_retries - 1:  # If this wasn't the last attempt
+                    print(f"Attempt {attempt + 1} failed, retrying...")
+                else:
+                    print("All attempts failed")
+                    return None
