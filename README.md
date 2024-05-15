@@ -1,6 +1,6 @@
 # 🚀 Pulln-llama 🦙
 
-Welcome to Pulln-llama! 
+Welcome to Pulln-llama! (The sketchy, long-lost and slightly embarrassing cousin of gitHub copilot workspace) 
 This project is all about making your life easier when dealing with PR's. We fetch, split, and analyze diffs from your pull requests, and then send them to our friendly neighborhood Ollama for review. 
 
 <br/>
