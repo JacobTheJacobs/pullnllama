@@ -3,20 +3,23 @@ import subprocess
 from pathlib import Path
 
 class GitHandler:
-    def __init__(self, repo_link):
+    def __init__(self, repo_link, branch, target_folder):
         self.repo_link = repo_link
+        self.target_folder = target_folder
         self.pr_id = repo_link.split("/")[-1]
         self.repo_name = repo_link.split("/")[-3]
         self.repo_owner = repo_link.split("/")[-4]
-        self.branch = "pr"
+        self.branch = branch
         self.pr_number = self.get_pr_number_from_link()
         self.repo_url = f"https://github.com/{self.repo_owner}/{self.repo_name}.git"
 
 
     def clone_or_pull_repo(self):
+        os.makedirs(self.target_folder, exist_ok=True)
+        os.chdir(self.target_folder)
         if Path(self.repo_name).is_dir():
             os.chdir(self.repo_name)
-            subprocess.run(["git", "checkout", "main"], check=True)
+            subprocess.run(["git", "checkout", "master"], check=True)
             subprocess.run(["git", "pull"], check=True)
         else:
             subprocess.run(["git", "clone", self.repo_url], check=True)
@@ -29,7 +32,7 @@ class GitHandler:
 
 
     def get_diff(self):
-        diff = subprocess.run(["git", "diff", "main"], check=True, text=True, capture_output=True)
+        diff = subprocess.run(["git", "diff", "master"], check=True, text=True, capture_output=True)
         if diff.returncode != 0:
             print("Error: git diff command failed")
             return None
@@ -39,16 +42,9 @@ class GitHandler:
             with open(file_name, 'r') as f:
                 diffs.append(f.read())
         diff_string = '\n'.join(diffs)
-        return diff_string
-
-
-    def get_latest_commit_id(self):
-        result = subprocess.run(["git", "rev-parse", self.branch], check=True, text=True, capture_output=True)
-        if result.returncode != 0:
-            print("Error: git rev-parse command failed")
-            return None
-        return result.stdout.strip()
-
+        if len(diff_string) > 1000:
+            return diffs
+        return [diff_string]
 
 
     def get_pr_number_from_link(self):
@@ -77,4 +73,12 @@ class GitHandler:
         if current_file is not None:
             current_file.close()
         return file_names
-                
+    
+    
+    def get_latest_commit_id(self):
+        result = subprocess.run(["git", "rev-parse", self.branch], check=True, text=True, capture_output=True)
+        if result.returncode != 0:
+            print("Error: git rev-parse command failed")
+            return None
+        return result.stdout.strip()
+
