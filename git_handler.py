@@ -19,6 +19,7 @@ class GitHandler:
         os.chdir(self.target_folder)
         if Path(self.repo_name).is_dir():
             os.chdir(self.repo_name)
+            subprocess.run(["git", "fetch"], check=True) 
             subprocess.run(["git", "checkout", "master"], check=True)
             subprocess.run(["git", "pull"], check=True)
         else:
@@ -32,19 +33,24 @@ class GitHandler:
 
 
     def get_diff(self):
-        diff = subprocess.run(["git", "diff", "master"], check=True, text=True, capture_output=True)
+        new_file_names = []
+        # Get the latest common commit of the PR branch and master
+        merge_base = subprocess.run(["git", "merge-base", "master", self.branch], check=True, text=True, capture_output=True, encoding='utf-8').stdout.strip()
+        # Compare the PR branch to the merge base
+        diff = subprocess.run(["git", "diff", merge_base, self.branch], check=True, text=True, capture_output=True, encoding='utf-8')
         if diff.returncode != 0:
             print("Error: git diff command failed")
-            return None
+            return None, None
         file_names = self.split_diff(diff.stdout)
         diffs = []
         for file_name in file_names:
-            with open(file_name, 'r') as f:
+            with open(file_name, 'r', encoding='utf-8') as f:  # Specify the encoding as 'utf-8'
                 diffs.append(f.read())
+                new_file_names.append(file_name)
         diff_string = '\n'.join(diffs)
         if len(diff_string) > 1000:
-            return diffs
-        return [diff_string]
+            return diffs, new_file_names
+        return [diff_string], new_file_names
 
 
     def get_pr_number_from_link(self):
@@ -66,7 +72,7 @@ class GitHandler:
                     current_file.close()
                 filename = line.split(' ')[2]
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
-                current_file = open(f'{filename}.diff', 'w')
+                current_file = open(f'{filename}.diff', 'w', encoding='utf-8')  # Specify the encoding as 'utf-8'
                 file_names.append(f'{filename}.diff')
             if current_file is not None:
                 current_file.write(line + '\n')
