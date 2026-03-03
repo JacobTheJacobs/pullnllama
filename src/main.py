@@ -1,52 +1,54 @@
-import requests
-import json
 import asyncio
+import argparse
 from git_handler import GitHandler
-from ollama import OllamaSender
+from ollama_send import OllamaSender
+from graph_rag import SimpleGraphRAG
 
-handler = GitHandler("https://github.com/X/Y/pull/Z", "branch_name", "path\\to\\repo\\download\\folder")
+def main():
+    parser = argparse.ArgumentParser(description="PR Review via Ollama with Graph RAG")
+    parser.add_argument("--repo-url", required=True, help="URL of the repository")
+    parser.add_argument("--branch", required=True, help="Branch name of the PR")
+    parser.add_argument("--path", required=True, help="Local path to store/clone repo")
+    args = parser.parse_args()
 
-
-handler.clone_or_pull_repo()
-handler.fetch_pr()
-diffs, file_names = handler.get_diff()
-c = 0
-
-for i in diffs:
-    c += 1
+    handler = GitHandler(args.repo_url, args.branch, args.path)
+    handler.clone_or_pull_repo()
+    handler.fetch_pr()
     
-print("Number of files: ", c)
-response = []
-async def send_diffs():
-    i = 0
-    for d, f in zip(diffs, file_names):
-        i += 1
-        print("-------------------",i * 100 / c, "%","-------------------")
-        print("send_to_ollama started")
-        print("Diff file name: ", f) 
-        response.append(await OllamaSender().send_to_ollama(d))
-        print('send_to_ollama finished')
+    diffs, file_names = handler.get_diff()
+    print(f"Number of files to review: {len(diffs)}")
+    
+    # Init Graph RAG to build context mapping across the PR diffs
+    graph_rag = SimpleGraphRAG()
+    graph_rag.build_graph_from_diffs(diffs, file_names)
 
-asyncio.run(send_diffs())
+    async def send_diffs():
+        sender = OllamaSender()
+        responses = []
+        for i, (diff, fname) in enumerate(zip(diffs, file_names), 1):
+            print(f"------------------- {i * 100 / len(diffs):.2f}% -------------------")
+            print(f"Reviewing {fname} with Ollama...")
+            
+            # Retrieve RAG context and inject into the payload
+            context = graph_rag.retrieve_context(fname)
+            print(f"Injected RAG Context: {context}")
+            
+            response = await sender.send_to_ollama(diff, fname, context)
+            responses.append((fname, response))
+        return responses
 
-for i in response:
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
-    print(i)
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
-    print("----------------------------------------------------------------------------------------------------------------------------------------")
+    results = asyncio.run(send_diffs())
+    
+    with open('ollama_results.txt', 'w') as f:
+        for fname, response in results:
+            print("=" * 80)
+            print(f"Review for {fname}:")
+            print(response)
+            
+            f.write("=" * 80 + "\n")
+            f.write(f"File: {fname}\n")
+            f.write("-" * 80 + "\n")
+            f.write(response + "\n")
 
-
-with open('ollama_results.txt', 'w') as file:
-    for i in response:
-        #
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-        file.write(str(i) + '\n')
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-        file.write("----------------------------------------------------------------------------------------------------------------------------------------\n")
-
+if __name__ == "__main__":
+    main()
